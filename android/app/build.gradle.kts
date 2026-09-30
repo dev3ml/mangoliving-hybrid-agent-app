@@ -10,6 +10,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -42,4 +43,14 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Applied only after google-services.json for com.mangoliving.mangoliving_agent
+// is added under android/app. The buyer app's file will not work here.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
