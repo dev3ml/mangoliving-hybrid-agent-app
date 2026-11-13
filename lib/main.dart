@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/constants/env_config.dart';
+import 'core/push/agent_foreground_alerts.dart';
 import 'core/push/push_background_handler.dart';
 import 'core/push/push_notification_service.dart';
 import 'core/router/app_router.dart';
@@ -48,6 +49,7 @@ class MangoLivingAgentApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
     ref.watch(pushNotificationBootstrapProvider);
+    ref.watch(agentForegroundAlertsProvider);
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
@@ -89,7 +91,10 @@ class _PushActivityHostState extends ConsumerState<_PushActivityHost>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
-    unawaited(ref.read(pushNotificationServiceProvider).recordActivity());
+    final PushNotificationService push =
+        ref.read(pushNotificationServiceProvider);
+    unawaited(push.registerIfNeeded());
+    unawaited(push.recordActivity());
   }
 
   @override

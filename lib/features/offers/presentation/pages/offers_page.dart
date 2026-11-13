@@ -6,6 +6,7 @@ import '../../../../core/constants/app_radius.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../core/widgets/dashboard_app_bar_actions.dart';
 import '../../domain/models/property_action.dart';
 import '../controllers/offers_controller.dart';
@@ -35,7 +36,7 @@ class OffersPage extends ConsumerWidget {
         onRefresh: () => ref.read(offersControllerProvider.notifier).refresh(),
         child: async.when(
           skipLoadingOnReload: true,
-          loading: () => const Center(child: Text('Loading offers…')),
+          loading: () => const AppSkeletonPage(),
           error: (Object error, _) => ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(AppSpacing.lg),

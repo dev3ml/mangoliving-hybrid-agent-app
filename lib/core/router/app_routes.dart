@@ -1,6 +1,11 @@
 /// Named route path constants.
 abstract final class AppRoutes {
   static const String splash = '/';
+  static const String role = '/role';
+  static const String inspector = '/inspector';
+  static const String inspectorLogin = '/inspector/login';
+  static const String inspectorHome = '/inspector/home';
+  static const String inspectorBooking = '/inspector/booking';
   static const String login = '/login';
   static const String forgotPassword = '/forgot-password';
 
@@ -14,6 +19,7 @@ abstract final class AppRoutes {
   static const String more = '/more';
 
   static const String offers = '/offers';
+  static const String propertySearch = '/property-search';
 
   static String offerPrepare(String id) =>
       '/offers/${Uri.encodeComponent(id)}/prepare';

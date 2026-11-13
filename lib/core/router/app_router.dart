@@ -9,6 +9,15 @@ import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
+import '../../features/inspector/domain/models/inspector_session.dart';
+import '../../features/inspector/presentation/controllers/inspector_auth_controller.dart';
+import '../../features/inspector/presentation/pages/inspector_booking_page.dart';
+import '../../features/inspector/presentation/pages/inspector_flow_page.dart';
+import '../../features/inspector/presentation/pages/inspector_inbox_page.dart';
+import '../../features/inspector/presentation/pages/inspector_login_page.dart';
+import '../../features/role/domain/app_role.dart';
+import '../../features/role/presentation/app_role_controller.dart';
+import '../../features/role/presentation/pages/role_page.dart';
 import '../../features/clients/presentation/pages/clients_page.dart';
 import '../../features/messages/presentation/pages/chat_thread_page.dart';
 import '../../features/messages/presentation/pages/messages_page.dart';
@@ -17,6 +26,7 @@ import '../../features/offers/presentation/pages/offer_summary_page.dart';
 import '../../features/offers/presentation/pages/offers_page.dart';
 import '../../features/offers/presentation/pages/prepare_offer_page.dart';
 import '../../features/overview/presentation/pages/overview_page.dart';
+import '../../features/property_search/presentation/pages/property_search_page.dart';
 import '../../features/shell/presentation/pages/main_shell.dart';
 import '../../features/showings/presentation/pages/showings_page.dart';
 import 'app_routes.dart';
@@ -32,21 +42,51 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
     refreshListenable: refresh,
     redirect: (BuildContext context, GoRouterState state) {
       final auth = ref.read(authControllerProvider);
+      final inspectorAuth = ref.read(inspectorAuthControllerProvider);
+      final AppRole role = ref.read(appRoleProvider);
       final bool loading = auth.isLoading;
       final bool signedIn = auth.valueOrNull != null;
       final String loc = state.matchedLocation;
       final bool onSplash = loc == AppRoutes.splash;
+      final bool onRole = loc == AppRoutes.role;
+      final bool onInspectorOnboard = loc == AppRoutes.inspector;
+      final bool onInspectorLogin = loc == AppRoutes.inspectorLogin;
+      final bool onInspectorHome = loc == AppRoutes.inspectorHome;
+      final bool onInspectorBooking = loc == AppRoutes.inspectorBooking;
+      final bool onInspector = onInspectorOnboard ||
+          onInspectorLogin ||
+          onInspectorHome ||
+          loc.startsWith('${AppRoutes.inspector}/');
       final bool onLogin = loc == AppRoutes.login;
       final bool onForgot = loc == AppRoutes.forgotPassword;
 
+      if (role == AppRole.inspector) {
+        if (inspectorAuth.isLoading) {
+          if (onSplash || onInspector) return null;
+          return AppRoutes.splash;
+        }
+        final bool inspectorSignedIn = inspectorAuth.valueOrNull != null;
+        if (inspectorSignedIn) {
+          if (onInspectorHome || onInspectorOnboard || onInspectorBooking) {
+            return null;
+          }
+          return AppRoutes.inspectorHome;
+        }
+        if (onInspectorLogin || onInspectorOnboard) return null;
+        return AppRoutes.inspectorLogin;
+      }
+
       if (loading) {
-        if (onLogin || onForgot) return null;
+        if (role == AppRole.agent && (onLogin || onForgot)) return null;
         return onSplash ? null : AppRoutes.splash;
+      }
+      if (role == AppRole.none) {
+        return onRole ? null : AppRoutes.role;
       }
       if (!signedIn) {
         return (onLogin || onForgot) ? null : AppRoutes.login;
       }
-      if (onSplash || onLogin || onForgot) {
+      if (onSplash || onLogin || onForgot || onRole || onInspector) {
         return AppRoutes.overview;
       }
       return null;
@@ -56,6 +96,38 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
         path: AppRoutes.splash,
         builder: (BuildContext context, GoRouterState state) {
           return const SplashPage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.role,
+        builder: (BuildContext context, GoRouterState state) {
+          return const RolePage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.inspectorLogin,
+        builder: (BuildContext context, GoRouterState state) {
+          return const InspectorLoginPage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.inspectorHome,
+        builder: (BuildContext context, GoRouterState state) {
+          return const InspectorInboxPage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.inspectorBooking,
+        builder: (BuildContext context, GoRouterState state) {
+          return InspectorBookingPage(
+            token: state.uri.queryParameters['token'] ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.inspector,
+        builder: (BuildContext context, GoRouterState state) {
+          return const InspectorFlowPage();
         },
       ),
       GoRoute(
@@ -98,6 +170,13 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
             },
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.propertySearch,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (BuildContext context, GoRouterState state) {
+          return const PropertySearchPage();
+        },
       ),
       GoRoute(
         path: AppRoutes.analytics,
@@ -163,7 +242,11 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
                       final String id = Uri.decodeComponent(
                         state.pathParameters['agentClientId'] ?? '',
                       );
-                      return ChatThreadPage(agentClientId: id);
+                      final Object? extra = state.extra;
+                      return ChatThreadPage(
+                        agentClientId: id,
+                        draft: extra is String ? extra : null,
+                      );
                     },
                   ),
                 ],
@@ -199,17 +282,26 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
   return router;
 });
 
-/// Rebuilds [GoRouter] redirects when the auth session changes.
+/// Rebuilds [GoRouter] redirects when the auth session or workspace changes.
 final class RouterRefresh extends ChangeNotifier {
   RouterRefresh(Ref ref) {
-    _sub = ref.listen(authControllerProvider, (_, _) => notifyListeners());
+    _authSub = ref.listen(authControllerProvider, (_, _) => notifyListeners());
+    _roleSub = ref.listen(appRoleProvider, (_, _) => notifyListeners());
+    _inspectorSub = ref.listen(
+      inspectorAuthControllerProvider,
+      (_, _) => notifyListeners(),
+    );
   }
 
-  late final ProviderSubscription<AsyncValue<dynamic>> _sub;
+  late final ProviderSubscription<AsyncValue<dynamic>> _authSub;
+  late final ProviderSubscription<AppRole> _roleSub;
+  late final ProviderSubscription<AsyncValue<InspectorSession?>> _inspectorSub;
 
   @override
   void dispose() {
-    _sub.close();
+    _authSub.close();
+    _roleSub.close();
+    _inspectorSub.close();
     super.dispose();
   }
 }

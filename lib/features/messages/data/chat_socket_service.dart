@@ -39,9 +39,13 @@ final class ChatSocketService {
       StreamController<ChatSocketPayload>.broadcast();
   final StreamController<ChatSocketPayload> _readController =
       StreamController<ChatSocketPayload>.broadcast();
+  final StreamController<ChatSocketPayload> _agentNotificationController =
+      StreamController<ChatSocketPayload>.broadcast();
 
   Stream<ChatSocketPayload> get onMessage => _messageController.stream;
   Stream<ChatSocketPayload> get onRead => _readController.stream;
+  Stream<ChatSocketPayload> get onAgentNotification =>
+      _agentNotificationController.stream;
 
   Future<void> ensureConnected() async {
     final String? token = await _storage.getAccessToken();
@@ -105,6 +109,7 @@ final class ChatSocketService {
       })
       ..on('chat:message', _emitMessage)
       ..on('chat:read', _emitRead)
+      ..on('agent:notification', _emitAgentNotification)
       ..connect();
   }
 
@@ -116,6 +121,11 @@ final class ChatSocketService {
   void _emitRead(dynamic data) {
     final ChatSocketPayload? payload = _normalize(data);
     if (payload != null) _readController.add(payload);
+  }
+
+  void _emitAgentNotification(dynamic data) {
+    final ChatSocketPayload? payload = _normalize(data);
+    if (payload != null) _agentNotificationController.add(payload);
   }
 
   ChatSocketPayload? _normalize(dynamic data) {
@@ -139,5 +149,6 @@ final class ChatSocketService {
     disconnect();
     _messageController.close();
     _readController.close();
+    _agentNotificationController.close();
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_radius.dart';
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_format.dart';
@@ -48,6 +50,7 @@ class OverviewPage extends ConsumerWidget {
             AppSpacing.xl,
           ),
           children: <Widget>[
+            const _NotificationBanner(),
             _WelcomeBanner(
               name: name,
               actionItems: snapshot?.actionItems ?? 0,
@@ -66,6 +69,119 @@ class OverviewPage extends ConsumerWidget {
             OverviewConversations(snapshot: snapshot, loading: loading),
             const SizedBox(height: AppSpacing.md),
             const _AnalyticsCta(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationBanner extends ConsumerStatefulWidget {
+  const _NotificationBanner();
+
+  @override
+  ConsumerState<_NotificationBanner> createState() =>
+      _NotificationBannerState();
+}
+
+class _NotificationBannerState extends ConsumerState<_NotificationBanner>
+    with WidgetsBindingObserver {
+  String? _status;
+  bool _asked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_refresh(ask: true));
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh({bool ask = false}) async {
+    final PushNotificationService push =
+        ref.read(pushNotificationServiceProvider);
+    String status = await push.iosNotificationStatus();
+    if (ask && !_asked && status == 'notDetermined') {
+      _asked = true;
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+      status = await push.requestIosNotificationPermission();
+      if (status == 'authorized' || status == 'provisional') {
+        await push.registerIfNeeded();
+      }
+    }
+    if (!mounted) return;
+    setState(() => _status = status);
+  }
+
+  Future<void> _enable() async {
+    final PushNotificationService push =
+        ref.read(pushNotificationServiceProvider);
+    if (_status == 'denied') {
+      await push.openNotificationSettings();
+      return;
+    }
+    final String next = await push.requestIosNotificationPermission();
+    if (next == 'authorized' || next == 'provisional') {
+      await push.registerIfNeeded();
+    }
+    if (!mounted) return;
+    setState(() => _status = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String? status = _status;
+    if (status == null ||
+        status == 'authorized' ||
+        status == 'provisional') {
+      return const SizedBox.shrink();
+    }
+    final ThemeData theme = Theme.of(context);
+    final bool denied = status == 'denied';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Notifications are off',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Allow notifications so a buyer message can alert this phone.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FilledButton(
+              onPressed: _enable,
+              child: Text(denied ? 'Open Settings' : 'Allow notifications'),
+            ),
           ],
         ),
       ),

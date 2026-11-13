@@ -11,7 +11,7 @@ abstract final class EnvConfig {
     }
   }
 
-  static String get appName => _read('APP_NAME', 'MangoLiving Agent');
+  static String get appName => _read('APP_NAME', 'MangoLiving Providers');
 
   static String get appEnv => _read('APP_ENV', 'development');
 
@@ -31,14 +31,24 @@ abstract final class EnvConfig {
   }
 
   /// Socket.IO origin — strips a trailing `/api` from [apiBaseUrl].
+  ///
+  /// Built by hand. [Uri.replace] on an empty path makes Dart print port 0,
+  /// and the socket then dials `https://host:0`.
   static String get socketBaseUrl {
     final Uri uri = Uri.parse(apiBaseUrl);
-    if (uri.path.endsWith('/api')) {
-      return uri
-          .replace(path: uri.path.substring(0, uri.path.length - 4))
-          .origin;
+    String path = uri.path;
+    if (path.endsWith('/api')) {
+      path = path.substring(0, path.length - 4);
     }
-    return uri.origin;
+    if (path == '/') path = '';
+    final bool omitPort = !uri.hasPort ||
+        uri.port == 0 ||
+        (uri.scheme == 'https' && uri.port == 443) ||
+        (uri.scheme == 'http' && uri.port == 80);
+    final String origin = omitPort
+        ? '${uri.scheme}://${uri.host}'
+        : '${uri.scheme}://${uri.host}:${uri.port}';
+    return '$origin$path';
   }
 
   static Duration get apiTimeout {
@@ -46,11 +56,24 @@ abstract final class EnvConfig {
     return Duration(seconds: seconds);
   }
 
-  static String get buyerAppUrl =>
-      _read('BUYER_APP_URL', 'https://app.mangoliving.ai');
+  static String get buyerAppUrl => normalizeBuyerAppUrl(
+        _read('BUYER_APP_URL', 'https://mangoliving.ai'),
+      );
 
   static String get agentWebUrl =>
       _read('AGENT_WEB_URL', 'https://mangoliving.ai/agents');
 
   static bool get isDevelopment => appEnv == 'development';
+}
+
+/// `app.mangoliving.ai` does not resolve. The buyer site is `mangoliving.ai`.
+String normalizeBuyerAppUrl(String configured) {
+  final String trimmed = configured.trim();
+  if (trimmed.isEmpty) return 'https://mangoliving.ai';
+  final Uri? uri = Uri.tryParse(trimmed);
+  if (uri == null || uri.host.isEmpty) return 'https://mangoliving.ai';
+  if (uri.host == 'app.mangoliving.ai') {
+    return uri.replace(host: 'mangoliving.ai').toString();
+  }
+  return trimmed;
 }

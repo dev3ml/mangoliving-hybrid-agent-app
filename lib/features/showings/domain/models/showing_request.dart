@@ -75,6 +75,53 @@ final class ShowingRequest {
   bool get hasListingUrl => (propertyUrl ?? '').trim().isNotEmpty;
   bool get hasEmail => (buyerEmail ?? '').trim().isNotEmpty;
   bool get hasPhone => (buyerPhone ?? '').trim().isNotEmpty;
+  bool get canMessage =>
+      hasMessage || (agentClientId ?? '').trim().isNotEmpty;
+
+  /// Listing link, including a path stored without a host.
+  /// A link saved from a local dev server is opened on the live site.
+  Uri? listingUri(String origin) {
+    final String raw = (propertyUrl ?? '').trim();
+    if (raw.isEmpty) return null;
+    final String base = origin.endsWith('/')
+        ? origin.substring(0, origin.length - 1)
+        : origin;
+    final Uri? parsed = Uri.tryParse(raw);
+    if (parsed != null && parsed.hasScheme && parsed.host.isNotEmpty) {
+      if (!_isLocalListingHost(parsed.host)) return parsed;
+      final Uri live = Uri.parse(base);
+      return Uri(
+        scheme: live.scheme.isEmpty ? 'https' : live.scheme,
+        host: live.host,
+        path: parsed.path,
+        query: parsed.hasQuery ? parsed.query : null,
+        fragment: parsed.hasFragment ? parsed.fragment : null,
+      );
+    }
+    if (raw.startsWith('/')) return Uri.tryParse('$base$raw');
+    return Uri.tryParse('$base/$raw');
+  }
+
+  static bool _isLocalListingHost(String host) {
+    final String value = host.toLowerCase();
+    return value == 'localhost' ||
+        value == '127.0.0.1' ||
+        value == '0.0.0.0' ||
+        value == '10.0.2.2';
+  }
+
+  Uri? get mailUri {
+    final String email = (buyerEmail ?? '').trim();
+    if (!email.contains('@')) return null;
+    return Uri.parse('mailto:$email');
+  }
+
+  Uri? get phoneUri {
+    final String cleaned =
+        (buyerPhone ?? '').trim().replaceAll(RegExp(r'[^\d+]'), '');
+    if (cleaned.replaceAll('+', '').length < 7) return null;
+    return Uri.parse('tel:$cleaned');
+  }
 
   DateTime? get scheduledAtDate =>
       scheduledAt == null ? null : DateTime.tryParse(scheduledAt!);
@@ -194,6 +241,28 @@ abstract final class ShowingSchedule {
 
   static DateTime combine(DateTime date, TimeParts time) {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  /// Date and time the schedule sheet should open on. A visit that already
+  /// happened moves to the same clock time on the next day that is still ahead.
+  static ({DateTime date, TimeParts time}) initialSelection({
+    DateTime? existing,
+    required DateTime now,
+  }) {
+    final DateTime? local = existing?.toLocal();
+    final TimeParts time = local == null
+        ? defaultTime
+        : TimeParts(local.hour, local.minute);
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    DateTime day = today;
+    if (local != null) {
+      final DateTime existingDay = DateTime(local.year, local.month, local.day);
+      if (!existingDay.isBefore(today)) day = existingDay;
+    }
+    if (!combine(day, time).isAfter(now)) {
+      day = DateTime(day.year, day.month, day.day).add(const Duration(days: 1));
+    }
+    return (date: day, time: time);
   }
 }
 

@@ -14,6 +14,12 @@ final dioProvider = Provider<Dio>((Ref ref) {
   return DioClient.create(tokenProvider: storage.getAccessToken);
 });
 
+/// Inspector session Dio — uses the inspector token, not the agent token.
+final inspectorDioProvider = Provider<Dio>((Ref ref) {
+  final SecureStorageService storage = ref.watch(secureStorageProvider);
+  return DioClient.create(tokenProvider: storage.getInspectorAccessToken);
+});
+
 abstract final class DioClient {
   static Dio create({Future<String?> Function()? tokenProvider}) {
     final String platform = switch (defaultTargetPlatform) {

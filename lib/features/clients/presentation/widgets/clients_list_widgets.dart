@@ -179,13 +179,16 @@ class ClientsActionChips extends StatelessWidget {
       ),
     ];
 
-    return SizedBox(
-      height: 84,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (BuildContext context, int index) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double cardWidth = (constraints.maxWidth - 16) / 3;
+        return SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: chips.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (BuildContext context, int index) {
           final chip = chips[index];
           final bool active = selected == chip.filter &&
               (chip.filter != ActionFilter.hasActions || selected == ActionFilter.hasActions);
@@ -205,30 +208,40 @@ class ClientsActionChips extends StatelessWidget {
                 selected == chip.filter ? ActionFilter.all : chip.filter,
               ),
               borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      '${chip.count}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: chip.color,
-                          ),
-                    ),
-                    Text(chip.label, style: Theme.of(context).textTheme.labelSmall),
-                  ],
+              child: SizedBox(
+                width: cardWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text(
+                        '${chip.count}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: chip.color,
+                            ),
+                      ),
+                      Text(
+                        chip.label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           );
         },
-      ),
+          ),
+        );
+      },
     );
   }
 }

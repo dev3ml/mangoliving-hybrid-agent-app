@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/widgets/app_search_field.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../core/widgets/dashboard_app_bar_actions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/time_format.dart';
@@ -69,7 +70,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
   Widget _body(AsyncValue<ChatThreadsState> async) {
     return async.when(
       skipLoadingOnReload: true,
-      loading: () => const Center(child: Text('Loading…')),
+      loading: () => const AppSkeletonPage(),
       error: (Object error, _) => ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -91,21 +92,42 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: <Widget>[
-              const SizedBox(height: 80),
-              Icon(
-                Icons.chat_bubble_outline,
-                size: 40,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurfaceVariant
-                    .withValues(alpha: 0.5),
+              const SizedBox(height: 72),
+              Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.messages.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble_outline,
+                    color: AppColors.messages,
+                    size: 32,
+                  ),
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Center(
                 child: Text(
                   data.search.trim().isEmpty
-                      ? 'No connected clients yet'
+                      ? 'No conversations yet'
                       : 'No matches',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  data.search.trim().isEmpty
+                      ? 'Messages from your clients will show up here.'
+                      : 'Try a different name.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.muted,
+                      ),
                 ),
               ),
             ],

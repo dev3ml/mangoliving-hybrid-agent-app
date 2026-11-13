@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../core/utils/time_format.dart';
 import '../../domain/models/criteria_history.dart';
 import '../../domain/models/roster_client.dart';
@@ -12,11 +12,10 @@ Future<void> showClientSearchHistorySheet(
   BuildContext context,
   RosterClient client,
 ) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (BuildContext context) => ClientSearchHistorySheet(client: client),
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      builder: (BuildContext context) => ClientSearchHistorySheet(client: client),
+    ),
   );
 }
 
@@ -49,25 +48,24 @@ class _ClientSearchHistorySheetState
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.8,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text('Search History', style: theme.textTheme.titleLarge),
-              Text(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Search History'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
                 widget.client.name,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.muted),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Expanded(child: _body(theme)),
-            ],
-          ),
+            ),
+            Expanded(child: _body(theme)),
+          ],
         ),
       ),
     );
@@ -87,7 +85,7 @@ class _ClientSearchHistorySheetState
         AsyncSnapshot<List<CriteriaHistoryEntry>> snapshot,
       ) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const AppSkeletonPage(count: 4);
         }
         if (snapshot.hasError) {
           return Text(snapshot.error.toString());
@@ -95,15 +93,21 @@ class _ClientSearchHistorySheetState
         final List<CriteriaHistoryEntry> entries =
             snapshot.data ?? const <CriteriaHistoryEntry>[];
         if (entries.isEmpty) {
-          return const Text('No recent activity');
+          return const Center(
+            child: Text(
+              'No recent activity',
+              style: TextStyle(color: AppColors.muted),
+            ),
+          );
         }
         final List<CriteriaHistoryEntry> chronological = entries.toList()
           ..sort((CriteriaHistoryEntry a, CriteriaHistoryEntry b) {
             return (a.createdAt ?? '').compareTo(b.createdAt ?? '');
           });
+        final bool light = theme.brightness == Brightness.light;
         return ListView.separated(
           itemCount: chronological.length,
-          separatorBuilder: (_, _) => const Divider(height: 24),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (BuildContext context, int index) {
             final CriteriaHistoryEntry current = chronological[index];
             final CriteriaHistoryEntry? previous =
@@ -112,29 +116,49 @@ class _ClientSearchHistorySheetState
               previous?.criteria,
               current.criteria,
             );
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  TimeFormat.relative(current.createdAt),
-                  style: theme.textTheme.labelMedium,
-                ),
-                if ((current.searchText ?? '').isNotEmpty)
-                  Text(current.searchText!),
-                if (current.resultCount != null)
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: light ? Colors.white : const Color(0xFF241C18),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
                   Text(
-                    '${current.resultCount} results',
-                    style: theme.textTheme.bodySmall,
+                    TimeFormat.relative(current.createdAt),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                const SizedBox(height: 8),
-                if (changes.isEmpty)
-                  Text(
-                    'No criteria changes',
-                    style: theme.textTheme.bodySmall,
-                  )
-                else
-                  ...changes.map(_changeRow),
-              ],
+                  if ((current.searchText ?? '').isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 4),
+                    Text(
+                      current.searchText!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                  if (current.resultCount != null) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${current.resultCount} results',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  if (changes.isEmpty)
+                    Text(
+                      'No criteria changes',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.muted,
+                      ),
+                    )
+                  else
+                    ...changes.map(_changeRow),
+                ],
+              ),
             );
           },
         );

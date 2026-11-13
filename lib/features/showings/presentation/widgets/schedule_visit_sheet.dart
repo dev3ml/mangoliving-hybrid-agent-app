@@ -39,15 +39,18 @@ class _ScheduleVisitSheetState extends State<ScheduleVisitSheet> {
   DateTime? _date;
   TimeParts _time = ShowingSchedule.defaultTime;
   bool _submitting = false;
+  bool _movedPastVisit = false;
 
   @override
   void initState() {
     super.initState();
+    final DateTime now = DateTime.now();
     final DateTime? existing = widget.request.scheduledAtDate?.toLocal();
-    if (existing != null) {
-      _date = DateTime(existing.year, existing.month, existing.day);
-      _time = TimeParts(existing.hour, existing.minute);
-    }
+    final ({DateTime date, TimeParts time}) selection =
+        ShowingSchedule.initialSelection(existing: existing, now: now);
+    _date = selection.date;
+    _time = selection.time;
+    _movedPastVisit = existing != null && !existing.isAfter(now);
   }
 
   String? get _error {
@@ -68,11 +71,16 @@ class _ScheduleVisitSheetState extends State<ScheduleVisitSheet> {
 
   Future<void> _pickDate() async {
     final DateTime now = DateTime.now();
+    final DateTime first = DateTime(now.year, now.month, now.day);
+    final DateTime last = DateTime(now.year + 2);
+    DateTime initial = _date ?? first;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
     final DateTime? next = await showDatePicker(
       context: context,
-      initialDate: _date ?? now,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: DateTime(now.year + 2),
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
     );
     if (next == null) return;
     setState(() => _date = next);
@@ -89,10 +97,7 @@ class _ScheduleVisitSheetState extends State<ScheduleVisitSheet> {
 
   void _confirm() {
     final String? error = _error;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-      return;
-    }
+    if (error != null) return;
     setState(() => _submitting = true);
     Navigator.of(context).pop(ShowingSchedule.combine(_date!, _time));
   }
@@ -125,6 +130,15 @@ class _ScheduleVisitSheetState extends State<ScheduleVisitSheet> {
             'Pick a date and time to tour ${widget.request.listingTitle}. The buyer will see the new visit time.',
             style: theme.textTheme.bodySmall,
           ),
+          if (_movedPastVisit) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              'The previous visit time has passed. A new time is filled in — change it if you want.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -155,9 +169,18 @@ class _ScheduleVisitSheetState extends State<ScheduleVisitSheet> {
               'Visit: ${TimeFormat.showingDate(preview.toIso8601String())}',
               style: theme.textTheme.titleSmall,
             ),
+          if (_error != null) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           FilledButton(
-            onPressed: _submitting || _date == null ? null : _confirm,
+            onPressed: _submitting || _error != null ? null : _confirm,
             child: Text(
               _submitting
                   ? 'Saving…'

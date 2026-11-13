@@ -300,12 +300,18 @@ final class CriteriaUncertainty {
     required this.totalChanges,
     required this.currentImportance,
     this.currentFlexibility = 'no',
+    this.selectionChanges = 0,
+    this.importanceChanges = 0,
+    this.flexibilityChanges = 0,
   });
 
   final String criteria;
   final num totalChanges;
   final num currentImportance;
   final String currentFlexibility;
+  final num selectionChanges;
+  final num importanceChanges;
+  final num flexibilityChanges;
 
   factory CriteriaUncertainty.fromJson(Map<String, dynamic> json) {
     return CriteriaUncertainty(
@@ -313,6 +319,9 @@ final class CriteriaUncertainty {
       totalChanges: (json['totalChanges'] as num?) ?? 0,
       currentImportance: (json['currentImportance'] as num?) ?? 0,
       currentFlexibility: (json['currentFlexibility'] as String?) ?? 'no',
+      selectionChanges: (json['selectionChanges'] as num?) ?? 0,
+      importanceChanges: (json['importanceChanges'] as num?) ?? 0,
+      flexibilityChanges: (json['flexibilityChanges'] as num?) ?? 0,
     );
   }
 }

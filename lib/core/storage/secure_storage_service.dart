@@ -60,4 +60,25 @@ final class SecureStorageService {
     await delete(key: StorageKeys.accessToken);
     await delete(key: StorageKeys.cachedUser);
   }
+
+  Future<void> saveInspectorAccessToken(String token) {
+    return write(key: StorageKeys.inspectorAccessToken, value: token);
+  }
+
+  Future<String?> getInspectorAccessToken() {
+    return read(key: StorageKeys.inspectorAccessToken);
+  }
+
+  Future<void> saveInspectorCachedSession(String json) {
+    return write(key: StorageKeys.inspectorCachedSession, value: json);
+  }
+
+  Future<String?> getInspectorCachedSession() {
+    return read(key: StorageKeys.inspectorCachedSession);
+  }
+
+  Future<void> clearInspectorSession() async {
+    await delete(key: StorageKeys.inspectorAccessToken);
+    await delete(key: StorageKeys.inspectorCachedSession);
+  }
 }

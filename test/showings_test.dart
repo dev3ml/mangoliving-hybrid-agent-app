@@ -47,6 +47,31 @@ void main() {
     expect(counts.cancelled, 2);
   });
 
+  test('a past visit opens on the next future slot at the same time', () {
+    final ({DateTime date, TimeParts time}) selection =
+        ShowingSchedule.initialSelection(
+      existing: DateTime(2026, 10, 19, 13),
+      now: DateTime(2026, 10, 31, 15),
+    );
+    expect(selection.date, DateTime(2026, 11, 1));
+    expect(selection.time.hour, 13);
+    expect(selection.time.minute, 0);
+    expect(
+      ShowingSchedule.validate(date: selection.date, time: selection.time, now: DateTime(2026, 10, 31, 15)),
+      isNull,
+    );
+  });
+
+  test('a future visit keeps its date', () {
+    final ({DateTime date, TimeParts time}) selection =
+        ShowingSchedule.initialSelection(
+      existing: DateTime(2026, 11, 5, 13),
+      now: DateTime(2026, 10, 31, 15),
+    );
+    expect(selection.date, DateTime(2026, 11, 5));
+    expect(selection.time.hour, 13);
+  });
+
   test('schedule validation requires a future datetime', () {
     final DateTime now = DateTime(2026, 9, 20, 12);
     expect(
@@ -68,6 +93,34 @@ void main() {
         now: now,
       ),
       isNull,
+    );
+  });
+
+  test('listing, mail, and phone links are openable', () {
+    const ShowingRequest request = ShowingRequest(
+      id: '1',
+      buyerName: 'Afshan Khan',
+      status: 'cancelled',
+      propertyUrl: '/tx/frisco/16658-table-rock/home/1',
+      buyerEmail: 'afshan.khan@sjinnovation.com',
+      buyerPhone: '(842) 170-5718',
+      agentClientId: 'client-1',
+    );
+    expect(
+      request.listingUri('https://mangoliving.ai').toString(),
+      'https://mangoliving.ai/tx/frisco/16658-table-rock/home/1',
+    );
+    expect(request.mailUri.toString(), 'mailto:afshan.khan@sjinnovation.com');
+    expect(request.phoneUri.toString(), 'tel:8421705718');
+    expect(request.canMessage, isTrue);
+    expect(
+      const ShowingRequest(
+        id: '2',
+        buyerName: 'Afshan Khan',
+        status: 'pending',
+        propertyUrl: 'http://localhost:5173/tx/frisco/16658-table-rock/home/1',
+      ).listingUri('https://mangoliving.ai').toString(),
+      'https://mangoliving.ai/tx/frisco/16658-table-rock/home/1',
     );
   });
 

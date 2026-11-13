@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/domain/models/agent_user.dart';
 import '../../features/overview/presentation/widgets/overview_notifications_sheet.dart';
 import '../router/app_routes.dart';
+import '../theme/app_colors.dart';
 import '../utils/time_format.dart';
 import 'theme_toggle_button.dart';
 
@@ -61,13 +62,19 @@ class ProfileAvatarButton extends ConsumerWidget {
         context.push(AppRoutes.account);
       },
       icon: CircleAvatar(
-        radius: 14,
+        radius: 16,
+        backgroundColor: const Color(0xFFFFE4D0),
+        foregroundColor: AppColors.primary,
         backgroundImage: hasPhoto ? NetworkImage(photo) : null,
         child: hasPhoto
             ? null
             : Text(
                 user?.initials ?? 'A',
-                style: const TextStyle(fontSize: 11),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
               ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_radius.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../core/widgets/dashboard_app_bar_actions.dart';
 import '../../../../core/utils/time_format.dart';
 import '../../domain/models/chat_message.dart';
@@ -12,9 +13,10 @@ import '../controllers/chat_messages_controller.dart';
 import '../controllers/chat_threads_controller.dart';
 
 class ChatThreadPage extends ConsumerStatefulWidget {
-  const ChatThreadPage({super.key, required this.agentClientId});
+  const ChatThreadPage({super.key, required this.agentClientId, this.draft});
 
   final String agentClientId;
+  final String? draft;
 
   @override
   ConsumerState<ChatThreadPage> createState() => _ChatThreadPageState();
@@ -27,14 +29,27 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    final String draft = widget.draft?.trim() ?? '';
+    if (draft.isNotEmpty) {
+      _draft.text = draft;
+      _draft.selection = TextSelection.collapsed(offset: draft.length);
+    }
+    final String threadId = widget.agentClientId;
+    Future<void>(() {
       if (!mounted) return;
-      ref.read(activeChatThreadIdProvider.notifier).state =
-          widget.agentClientId;
-      ref
-          .read(chatThreadsControllerProvider.notifier)
-          .markRead(widget.agentClientId);
+      ref.read(activeChatThreadIdProvider.notifier).state = threadId;
+      ref.read(chatThreadsControllerProvider.notifier).markRead(threadId);
     });
+  }
+
+  @override
+  void didUpdateWidget(ChatThreadPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final String draft = widget.draft?.trim() ?? '';
+    if (draft.isNotEmpty && draft != (oldWidget.draft?.trim() ?? '')) {
+      _draft.text = draft;
+      _draft.selection = TextSelection.collapsed(offset: draft.length);
+    }
   }
 
   @override
@@ -96,10 +111,16 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage> {
 
     return PopScope(
       onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop &&
-            ref.read(activeChatThreadIdProvider) == widget.agentClientId) {
-          ref.read(activeChatThreadIdProvider.notifier).state = null;
-        }
+        if (!didPop) return;
+        final ProviderContainer container = ProviderScope.containerOf(
+          context,
+          listen: false,
+        );
+        final String threadId = widget.agentClientId;
+        Future<void>(() {
+          if (container.read(activeChatThreadIdProvider) != threadId) return;
+          container.read(activeChatThreadIdProvider.notifier).state = null;
+        });
       },
       child: Scaffold(
         appBar: AppBar(
@@ -167,7 +188,7 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage> {
   Widget _transcript(AsyncValue<ChatMessagesState> async) {
     return async.when(
       skipLoadingOnReload: true,
-      loading: () => const Center(child: Text('Loading…')),
+      loading: () => const AppSkeletonPage(chat: true),
       error: (Object error, _) => Center(child: Text(error.toString())),
       data: (ChatMessagesState data) {
         if (data.messages.isEmpty) {

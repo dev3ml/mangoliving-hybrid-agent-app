@@ -9,7 +9,7 @@ void main() {
   setUpAll(() async {
     dotenv.testLoad(
       fileInput: '''
-APP_NAME=MangoLiving Agent
+APP_NAME=MangoLiving Providers
 API_BASE_URL=https://example.test/api
 API_TIMEOUT_SECONDS=5
 ''',
@@ -18,6 +18,6 @@ API_TIMEOUT_SECONDS=5
 
   testWidgets('app boots to splash', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: MangoLivingAgentApp()));
-    expect(find.text('MangoLiving Agent'), findsOneWidget);
+    expect(find.text('MangoLiving Providers'), findsOneWidget);
   });
 }

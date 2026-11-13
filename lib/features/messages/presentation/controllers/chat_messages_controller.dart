@@ -85,6 +85,23 @@ class ChatMessagesController
     }
   }
 
+  Future<void> refresh() async {
+    final ChatMessagesState? current = state.valueOrNull;
+    try {
+      final List<ChatMessage> messages = await _repo.listMessages(_agentClientId);
+      state = AsyncData<ChatMessagesState>(
+        ChatMessagesState(
+          messages: messages,
+          sending: current?.sending ?? false,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      if (!state.hasValue) {
+        state = AsyncError<ChatMessagesState>(error, stackTrace);
+      }
+    }
+  }
+
   void _onSocketMessage(ChatSocketPayload payload) {
     final ChatMessage message = ChatMessage.fromJson(payload);
     if (message.agentClientId != _agentClientId) return;

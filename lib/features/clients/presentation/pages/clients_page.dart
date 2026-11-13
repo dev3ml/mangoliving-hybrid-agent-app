@@ -63,15 +63,7 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clients'),
-        actions: DashboardAppBarActions.of(
-          extra: <Widget>[
-            IconButton(
-              tooltip: 'Add Client',
-              onPressed: _openAdd,
-              icon: const Icon(Icons.person_add_alt_1),
-            ),
-          ],
-        ),
+        actions: DashboardAppBarActions.of(),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(clientsControllerProvider.notifier).refresh(),
@@ -112,6 +104,15 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _openAdd,
+            icon: const Icon(Icons.person_add_alt_1, size: 18),
+            label: const Text('Add Client'),
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         ClientsPendingBanner(

@@ -22,13 +22,54 @@ void main() {
     expect(target.replace, isTrue);
   });
 
-  test('showing request opens the showings tab', () {
-    final AgentPushTarget target = AgentPushTarget.fromData(<String, dynamic>{
-      'type': 'showing_request',
-    });
+  test('showing and open house requests open the showings tab', () {
+    for (final String type in <String>['showing_request', 'open_house_request']) {
+      final AgentPushTarget target = AgentPushTarget.fromData(<String, dynamic>{
+        'type': type,
+      });
+      expect(target.location, AppRoutes.showings);
+      expect(target.replace, isTrue);
+    }
+  });
 
-    expect(target.location, AppRoutes.showings);
-    expect(target.replace, isTrue);
+  test('client activity opens the clients tab', () {
+    for (final String type in <String>[
+      'add_request',
+      'buyer_interest',
+      'invite_accepted',
+    ]) {
+      expect(
+        AgentPushTarget.fromData(<String, dynamic>{'type': type}).location,
+        AppRoutes.clients,
+      );
+    }
+  });
+
+  test('offer and stage pushes open offers or clients', () {
+    expect(
+      AgentPushTarget.fromData(<String, dynamic>{'type': 'offer_request'}).location,
+      AppRoutes.offers,
+    );
+    expect(
+      AgentPushTarget.fromData(<String, dynamic>{
+        'type': 'stage_change',
+        'link': '/offers',
+      }).location,
+      AppRoutes.offers,
+    );
+    expect(
+      AgentPushTarget.fromData(<String, dynamic>{
+        'type': 'stage_change',
+        'link': '/clients',
+      }).location,
+      AppRoutes.clients,
+    );
+    expect(
+      AgentPushTarget.fromData(<String, dynamic>{
+        'type': 'actions_panel_reminder',
+      }).location,
+      AppRoutes.clients,
+    );
   });
 
   test('campaign screens map onto agent routes', () {

@@ -11,6 +11,7 @@ abstract final class AppColors {
   static const Color accentWash = Color(0xFFFFF1E6);
   static const Color accentWashDark = Color(0xFF3A2410);
 
+  static const Color canvas = Color(0xFFFFF8F4);
   static const Color background = Color(0xFFFFFFFF);
   static const Color backgroundDark = Color(0xFF171717);
   static const Color surfaceDark = Color(0xFF2E2E2E);

@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../core/widgets/dashboard_app_bar_actions.dart';
 import '../../domain/models/analytics_models.dart';
 import '../controllers/analytics_controller.dart';
+import '../widgets/analytics_charts.dart';
 import '../widgets/analytics_sections.dart';
 
 class AnalyticsPage extends ConsumerWidget {
@@ -19,23 +21,14 @@ class AnalyticsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Analytics'),
-        actions: DashboardAppBarActions.of(
-          extra: <Widget>[
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () =>
-                  ref.read(analyticsControllerProvider.notifier).refresh(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
+        actions: DashboardAppBarActions.of(),
       ),
       body: RefreshIndicator(
         onRefresh: () =>
             ref.read(analyticsControllerProvider.notifier).refresh(),
         child: async.when(
           skipLoadingOnReload: true,
-          loading: () => const Center(child: Text('Loading analytics…')),
+          loading: () => const AppSkeletonPage(),
           error: (Object error, _) => ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -79,7 +72,8 @@ class _AnalyticsBody extends ConsumerWidget {
         Text(
           "Insights and trends for your clients' search activity",
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: AppColors.muted,
+                height: 1.35,
               ),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -138,7 +132,7 @@ class _AnalyticsBody extends ConsumerWidget {
         else if (view.overview == null && view.clients.isEmpty)
           const SizedBox.shrink()
         else if (view.overview == null)
-          const Text('Loading analytics…')
+          const AppSkeletonPage(count: 3, shrinkWrap: true)
         else if (view.sharingDisabled)
           const _SharingDisabledAlert()
         else ...<Widget>[
@@ -155,134 +149,73 @@ class _AnalyticsBody extends ConsumerWidget {
   List<Widget> _charts(AnalyticsOverview data) {
     return <Widget>[
       AnalyticsChartCard(
-        title: 'Engagement funnel',
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (int i = 0; i < data.engagementFunnel.length; i++)
-              (
-                data.engagementFunnel[i].stage,
-                data.engagementFunnel[i].value,
-                AnalyticsPalette.at(i),
-              ),
-          ],
-        ),
+        title: 'Engagement Breakdown',
+        subtitle: 'How this client moves from browsing to taking action',
+        child: EngagementBreakdown(stages: data.engagementFunnel),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
-        title: 'Criteria importance',
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (int i = 0; i < data.criteriaUncertainty.length; i++)
-              (
-                data.criteriaUncertainty[i].criteria,
-                data.criteriaUncertainty[i].currentImportance,
-                AnalyticsPalette.at(i),
-              ),
-          ],
-        ),
+        title: 'Importance Profile',
+        subtitle: "Current importance (1–5) for the buyer's top criteria",
+        child: ImportanceRadarChart(rows: data.criteriaUncertainty),
       ),
       if (data.criteriaUncertainty.isNotEmpty) ...<Widget>[
         const SizedBox(height: AppSpacing.md),
         AnalyticsChartCard(
-          title: 'Criteria uncertainty',
-          child: AnalyticsBarList(
-            rows: <(String, num, Color)>[
-              for (int i = 0; i < data.criteriaUncertainty.length; i++)
-                (
-                  data.criteriaUncertainty[i].criteria,
-                  data.criteriaUncertainty[i].totalChanges,
-                  AnalyticsPalette.at(i),
-                ),
-            ],
-          ),
+          title: 'Client Uncertainty per Criteria',
+          subtitle: 'Each criterion the client revisited — bubble size shows how often it changed',
+          child: UncertaintyBubbleChart(rows: data.criteriaUncertainty),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AnalyticsChartCard(
+          title: 'Criteria Uncertainty Overview',
+          subtitle: 'Selection, importance, and flexibility adjustments per criteria',
+          child: UncertaintyBarChart(rows: data.criteriaUncertainty),
         ),
       ],
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
-        title: 'Activity heatmap',
+        title: 'Activity Heatmap',
+        subtitle: 'When this buyer is active — best hours to follow up',
         child: AnalyticsHeatmap(grid: data.activityHeatmap),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
-        title: 'Result quality',
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (int i = 0; i < data.resultQuality.length; i++)
-              (
-                data.resultQuality[i].name,
-                data.resultQuality[i].value,
-                AnalyticsPalette.at(i),
-              ),
-          ],
-        ),
+        title: 'Search Result Quality',
+        subtitle: 'How many results each search returned — too narrow vs too broad',
+        child: ResultQualityChart(rows: data.resultQuality),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
-        title: 'View engagement',
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (int i = 0; i < data.viewEngagement.length; i++)
-              (
-                '${data.viewEngagement[i].type} · ${data.viewEngagement[i].avgSeconds}s',
-                data.viewEngagement[i].views,
-                AnalyticsPalette.at(i),
-              ),
-          ],
-        ),
+        title: 'Average Engagement Time',
+        subtitle: 'Mean time on listing page per property type',
+        child: ViewEngagementChart(rows: data.viewEngagement),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
-        title: 'Showing status',
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (int i = 0; i < data.showingStatus.length; i++)
-              (
-                data.showingStatus[i].name,
-                data.showingStatus[i].value,
-                _hexOrPalette(data.showingStatus[i].color, i),
-              ),
-          ],
-        ),
+        title: 'Showing Request Status',
+        subtitle: 'Outcome breakdown for tour requests routed through you',
+        child: ShowingStatusDonut(rows: data.showingStatus),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
-        title: 'Criteria changes daily',
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (final DailyCriteriaPoint p in data.criteriaChangesDaily)
-              (p.day.isEmpty ? p.date : p.day, p.changes, AnalyticsPalette.primarySeries),
-          ],
-        ),
+        title: 'Criteria Changes Over Days',
+        subtitle:
+            'Daily criteria revisions with cumulative trend. Red markers indicate less than 10 total changes after week 4.',
+        child: CriteriaDailyChart(points: data.criteriaChangesDaily),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
         title: 'Search Activity Over Time',
         subtitle: 'Searches per month with zero-result count overlay',
         insight: AnalyticsInsights.searchActivity(data.searchActivity),
-        child: AnalyticsBarList(
-          rows: <(String, num, Color)>[
-            for (final SearchActivityPoint p in data.searchActivity)
-              (p.month, p.searches, AnalyticsPalette.primarySeries),
-          ],
-        ),
+        child: SearchActivityChart(points: data.searchActivity),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
         title: 'Location Distribution',
         insight: AnalyticsInsights.location(data.locationDistribution),
-        child: data.locationDistribution.isEmpty
-            ? const Text('No location activity recorded yet.')
-            : AnalyticsBarList(
-                valueSuffix: '%',
-                rows: <(String, num, Color)>[
-                  for (int i = 0; i < data.locationDistribution.length; i++)
-                    (
-                      _truncate(data.locationDistribution[i].name),
-                      data.locationDistribution[i].value,
-                      AnalyticsPalette.at(i),
-                    ),
-                ],
-              ),
+        child: LocationDonutChart(slices: data.locationDistribution),
       ),
       const SizedBox(height: AppSpacing.md),
       AnalyticsChartCard(
@@ -291,18 +224,6 @@ class _AnalyticsBody extends ConsumerWidget {
         child: AnalyticsCriteriaList(entries: data.recentCriteriaChanges),
       ),
     ];
-  }
-
-  Color _hexOrPalette(String? hex, int index) {
-    if (hex == null || hex.isEmpty) return AnalyticsPalette.at(index);
-    final String raw = hex.replaceFirst('#', '');
-    if (raw.length != 6) return AnalyticsPalette.at(index);
-    return Color(int.parse('FF$raw', radix: 16));
-  }
-
-  String _truncate(String name) {
-    if (name.length <= 22) return name;
-    return '${name.substring(0, 21)}…';
   }
 }
 

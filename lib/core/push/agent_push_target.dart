@@ -40,8 +40,24 @@ final class AgentPushTarget {
     if (type == 'buyer_chat' || type == 'agent_chat') {
       return _chat(data);
     }
-    if (type == 'showing_request') {
+    if (type == 'showing_request' || type == 'open_house_request') {
       return const AgentPushTarget(location: AppRoutes.showings, replace: true);
+    }
+    if (type == 'offer_request') {
+      return const AgentPushTarget(location: AppRoutes.offers, replace: true);
+    }
+    if (type == 'stage_change' || type == 'actions_panel_reminder') {
+      final String link = (data['link'] ?? data['screen'] ?? '').toString();
+      if (link.isNotEmpty) return _fromLink(link, data);
+      return const AgentPushTarget(location: AppRoutes.clients, replace: true);
+    }
+    if (type == 'add_request' ||
+        type == 'client_request' ||
+        type == 'buyer_interest' ||
+        type == 'invite_accepted' ||
+        type == 'invite_declined' ||
+        type == 'relation_revoked') {
+      return const AgentPushTarget(location: AppRoutes.clients, replace: true);
     }
     if (type == 'campaign') {
       return _campaign(data);

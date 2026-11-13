@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mangoliving_agent/features/analytics/domain/models/analytics_models.dart';
 import 'package:mangoliving_agent/features/analytics/presentation/controllers/analytics_controller.dart';
 import 'package:mangoliving_agent/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:mangoliving_agent/features/analytics/presentation/widgets/analytics_charts.dart';
 
 class _FakeAnalyticsController extends AnalyticsController {
   _FakeAnalyticsController(this.initial);
@@ -108,7 +109,7 @@ void main() {
   testWidgets('Analytics shows picker, AI, stats, and privacy gate', (
     WidgetTester tester,
   ) async {
-    tester.view.physicalSize = const Size(400, 2200);
+    tester.view.physicalSize = const Size(400, 9000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -163,6 +164,36 @@ void main() {
     expect(find.text('Search Activity Over Time'), findsOneWidget);
     expect(find.text('Location Distribution'), findsOneWidget);
     expect(find.text('Sharing disabled.'), findsNothing);
+  });
+
+  testWidgets('engagement gauge sits above the stage list', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: EngagementBreakdown(
+            stages: <FunnelStage>[
+              FunnelStage(stage: 'Searches', value: 9),
+              FunnelStage(stage: 'Properties Viewed', value: 2),
+              FunnelStage(stage: 'Favorited', value: 0),
+              FunnelStage(stage: 'Compared', value: 0),
+              FunnelStage(stage: 'Showings Requested', value: 1),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('50%'), findsWidgets);
+    expect(find.text('Searches'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Searches')).dy,
+      greaterThan(150),
+    );
   });
 
   testWidgets('sharing disabled hides charts and AI', (WidgetTester tester) async {

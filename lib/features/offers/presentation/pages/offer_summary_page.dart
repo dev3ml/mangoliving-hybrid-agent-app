@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../core/widgets/dashboard_app_bar_actions.dart';
 import '../../domain/models/property_action.dart';
 import '../controllers/offers_controller.dart';
@@ -39,11 +40,9 @@ class _OfferSummaryPageState extends ConsumerState<OfferSummaryPage> {
         actions: DashboardAppBarActions.of(),
       ),
       body: row == null
-          ? Center(
-              child: async.isLoading
-                  ? const Text('Loading offers…')
-                  : const Text('Offer not found.'),
-            )
+          ? async.isLoading
+              ? const AppSkeletonPage()
+              : const Center(child: Text('Offer not found.'))
           : ListView(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
