@@ -209,6 +209,15 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage> {
   }
 }
 
+String _seatLabel(String role) {
+  return switch (role) {
+    'agent' => 'Agent',
+    'buyer' => 'Buyer',
+    'inspector' => 'Inspector',
+    _ => role,
+  };
+}
+
 class _Bubble extends StatelessWidget {
   const _Bubble({required this.message});
 
@@ -238,8 +247,21 @@ class _Bubble extends StatelessWidget {
           ),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment:
+              mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: <Widget>[
+            if (!mine && message.senderName.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  '${message.senderName} · ${_seatLabel(message.senderRole)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             Text(
               message.displayText,
               style: TextStyle(

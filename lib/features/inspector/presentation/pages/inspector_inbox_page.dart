@@ -9,9 +9,11 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/theme_toggle_button.dart';
 import '../../../account/presentation/controllers/theme_mode_controller.dart';
+import '../../../messages/domain/models/chat_thread.dart';
 import '../../data/inspector_auth_remote.dart';
 import '../../domain/models/inspector_session.dart';
 import '../controllers/inspector_auth_controller.dart';
+import 'inspector_chat_page.dart';
 
 final inspectorBookingsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((Ref ref) async {
@@ -30,6 +32,7 @@ class _InspectorInboxPageState extends ConsumerState<InspectorInboxPage> {
 
   static const List<String> _titles = <String>[
     'Bookings',
+    'Messages',
     'Schedule',
     'Earnings',
     'Profile',
@@ -62,6 +65,9 @@ class _InspectorInboxPageState extends ConsumerState<InspectorInboxPage> {
             ?.where((Map<String, dynamic> row) => row['state'] == 'request_sent')
             .length ??
         0;
+    final int unread = ref.watch(inspectorChatThreadsProvider).valueOrNull
+            ?.fold<int>(0, (int sum, ChatThread thread) => sum + thread.unreadCount) ??
+        0;
 
     return Scaffold(
       appBar: AppBar(
@@ -72,6 +78,7 @@ class _InspectorInboxPageState extends ConsumerState<InspectorInboxPage> {
             tooltip: 'Refresh',
             onPressed: () {
               ref.invalidate(inspectorBookingsProvider);
+              ref.invalidate(inspectorChatThreadsProvider);
               ref.read(inspectorAuthControllerProvider.notifier).refresh();
             },
             icon: const Icon(Icons.refresh),
@@ -84,8 +91,16 @@ class _InspectorInboxPageState extends ConsumerState<InspectorInboxPage> {
             bookings: bookings,
             onOpen: _open,
           ),
-        1 => _ScheduleTab(bookings: bookings, onOpen: _open),
-        2 => _EarningsTab(bookings: bookings, onOpen: _open),
+        1 => _InspectorMessagesTab(
+            onOpen: (ChatThread thread) {
+              context.push(
+                AppRoutes.inspectorChatThread(thread.bareId),
+                extra: thread.buyerName,
+              );
+            },
+          ),
+        2 => _ScheduleTab(bookings: bookings, onOpen: _open),
+        3 => _EarningsTab(bookings: bookings, onOpen: _open),
         _ => _ProfileTab(session: session),
       },
       bottomNavigationBar: NavigationBar(
@@ -108,6 +123,19 @@ class _InspectorInboxPageState extends ConsumerState<InspectorInboxPage> {
             ),
             label: 'Bookings',
           ),
+          NavigationDestination(
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(Icons.chat_bubble),
+            ),
+            label: 'Messages',
+          ),
           const NavigationDestination(
             icon: Icon(Icons.calendar_today_outlined),
             selectedIcon: Icon(Icons.calendar_today),
@@ -125,6 +153,59 @@ class _InspectorInboxPageState extends ConsumerState<InspectorInboxPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InspectorMessagesTab extends ConsumerWidget {
+  const _InspectorMessagesTab({required this.onOpen});
+
+  final void Function(ChatThread thread) onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<ChatThread>> threads =
+        ref.watch(inspectorChatThreadsProvider);
+    return threads.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (Object error, _) => Center(child: Text('$error')),
+      data: (List<ChatThread> rows) {
+        if (rows.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'When a buyer pays for an inspection, the group chat with the buyer and their agent shows up here.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(inspectorChatThreadsProvider),
+          child: ListView.separated(
+            itemCount: rows.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (BuildContext context, int index) {
+              final ChatThread thread = rows[index];
+              return ListTile(
+                title: Text(thread.buyerName),
+                subtitle: Text(thread.preview, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: thread.unreadCount > 0
+                    ? CircleAvatar(
+                        radius: 10,
+                        child: Text(
+                          '${thread.unreadCount}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      )
+                    : null,
+                onTap: () => onOpen(thread),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

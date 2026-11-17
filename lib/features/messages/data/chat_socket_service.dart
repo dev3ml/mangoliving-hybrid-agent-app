@@ -25,11 +25,21 @@ final chatSocketServiceProvider = Provider<ChatSocketService>((Ref ref) {
   return service;
 });
 
+final inspectorChatSocketProvider = Provider<ChatSocketService>((Ref ref) {
+  final ChatSocketService service = ChatSocketService(
+    ref.watch(secureStorageProvider),
+    inspector: true,
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
+
 /// Agent chat realtime — same events as web `agent/src/hooks/useChat.ts`.
 final class ChatSocketService {
-  ChatSocketService(this._storage);
+  ChatSocketService(this._storage, {this.inspector = false});
 
   final SecureStorageService _storage;
+  final bool inspector;
   io.Socket? _socket;
   String? _token;
   bool _pollingOnly = false;
@@ -48,7 +58,9 @@ final class ChatSocketService {
       _agentNotificationController.stream;
 
   Future<void> ensureConnected() async {
-    final String? token = await _storage.getAccessToken();
+    final String? token = inspector
+        ? await _storage.getInspectorAccessToken()
+        : await _storage.getAccessToken();
     if (token == null || token.isEmpty) {
       disconnect();
       return;
@@ -108,6 +120,7 @@ final class ChatSocketService {
         _openSocket(token, pollingOnly: true);
       })
       ..on('chat:message', _emitMessage)
+      ..on('chat:inspection-message', _emitMessage)
       ..on('chat:read', _emitRead)
       ..on('agent:notification', _emitAgentNotification)
       ..connect();

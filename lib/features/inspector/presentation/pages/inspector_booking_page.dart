@@ -144,6 +144,29 @@ class _InspectorBookingPageState extends ConsumerState<InspectorBookingPage> {
     );
   }
 
+  Future<void> _openGroupChat(Map<String, dynamic> booking) async {
+    final String bookingId = booking['id']?.toString() ?? '';
+    if (bookingId.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      final thread = await ref
+          .read(inspectorAuthRemoteProvider)
+          .inspectionThreadForBooking(bookingId);
+      if (!mounted) return;
+      context.push(
+        AppRoutes.inspectorChatThread(thread.bareId),
+        extra: thread.buyerName,
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_message(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Widget _body(ColorScheme colors, Map<String, dynamic> booking) {
     final String state = booking['state']?.toString() ?? '';
     final Map<String, dynamic> property = _map(booking['property']);
@@ -217,6 +240,17 @@ class _InspectorBookingPageState extends ConsumerState<InspectorBookingPage> {
             ),
           ),
         ),
+        if (paid) ...<Widget>[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _busy ? null : () => _openGroupChat(booking),
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('Message'),
+            ),
+          ),
+        ],
         if (state == 'request_sent' && request['expiresAt'] != null) ...<Widget>[
           const SizedBox(height: 12),
           Text(

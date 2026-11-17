@@ -17,6 +17,7 @@ final class AgentUser {
     this.lastName,
     this.photoUrl,
     this.roleName,
+    this.isEmailVerified = false,
   });
 
   final String id;
@@ -25,6 +26,7 @@ final class AgentUser {
   final String? lastName;
   final String? photoUrl;
   final String? roleName;
+  final bool isEmailVerified;
 
   String get displayName {
     final String combined =
@@ -58,6 +60,7 @@ final class AgentUser {
     String? lastName,
     String? photoUrl,
     String? roleName,
+    bool? isEmailVerified,
   }) {
     return AgentUser(
       id: id,
@@ -66,6 +69,7 @@ final class AgentUser {
       lastName: lastName ?? this.lastName,
       photoUrl: photoUrl ?? this.photoUrl,
       roleName: roleName ?? this.roleName,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
     );
   }
 
@@ -85,6 +89,7 @@ final class AgentUser {
       lastName: json['lastName'] as String?,
       photoUrl: json['photoUrl'] as String?,
       roleName: roleName,
+      isEmailVerified: json['isEmailVerified'] == true,
     );
   }
 
@@ -96,6 +101,7 @@ final class AgentUser {
       'lastName': lastName,
       'photoUrl': photoUrl,
       'role': <String, dynamic>{'name': roleName},
+      'isEmailVerified': isEmailVerified,
     };
   }
 }

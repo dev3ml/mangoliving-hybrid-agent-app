@@ -1,5 +1,9 @@
-/// `GET /v1/agent/chat/threads` row.
+/// `GET /v1/agent/chat/threads` row, or an inspection group room.
 final class ChatThread {
+  static const String inspectionPrefix = 'inspection:';
+
+  static String inspectionKey(String threadId) => '$inspectionPrefix$threadId';
+
   const ChatThread({
     required this.agentClientId,
     required this.buyerName,
@@ -24,12 +28,26 @@ final class ChatThread {
   final int unreadCount;
   final String updatedAt;
 
+  bool get isInspection => agentClientId.startsWith(inspectionPrefix);
+
+  String get bareId =>
+      isInspection ? agentClientId.substring(inspectionPrefix.length) : agentClientId;
+
   bool get hasLastMessage =>
       lastMessageText != null || lastMessageAt != null || lastSenderRole != null;
 
   String get preview {
     final String text = (lastMessageText ?? '').trim();
     if (text.isEmpty) return 'No messages yet';
+    if (isInspection) {
+      final String who = switch (lastSenderRole) {
+        'agent' => 'Agent',
+        'buyer' => 'Buyer',
+        'inspector' => 'Inspector',
+        _ => '',
+      };
+      return who.isEmpty ? text : '$who: $text';
+    }
     final String prefix = lastSenderRole == 'agent' ? 'You: ' : '';
     return '$prefix$text';
   }
@@ -105,6 +123,30 @@ final class ChatThread {
       lastSenderRole: role,
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       updatedAt: (json['updatedAt'] as String?) ?? '',
+    );
+  }
+
+  /// `GET /v1/inspection-chat/threads` row.
+  factory ChatThread.inspectionFromJson(Map<String, dynamic> json) {
+    final dynamic last = json['lastMessage'];
+    String? text;
+    String? createdAt;
+    String? role;
+    if (last is Map<String, dynamic>) {
+      text = last['text'] as String?;
+      createdAt = last['createdAt'] as String?;
+      role = last['senderRole'] as String?;
+    }
+    final String title = (json['title'] as String?)?.trim() ?? '';
+    return ChatThread(
+      agentClientId: inspectionKey((json['id'] ?? '').toString()),
+      buyerName: title.isEmpty ? 'Inspection' : title,
+      buyerEmail: 'Inspection',
+      lastMessageText: text,
+      lastMessageAt: createdAt,
+      lastSenderRole: role,
+      unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+      updatedAt: (json['updatedAt'] as String?) ?? createdAt ?? '',
     );
   }
 }

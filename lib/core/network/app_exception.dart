@@ -36,6 +36,15 @@ final class UnknownException extends AppException {
   const UnknownException([super.message = 'Something went wrong']);
 }
 
+final class VerificationCooldownException extends AppException {
+  const VerificationCooldownException(
+    this.retryAfterSeconds, [
+    super.message = 'Please wait before requesting a new code',
+  ]);
+
+  final int retryAfterSeconds;
+}
+
 /// Maps [DioException] into domain [AppException]s.
 abstract final class ExceptionMapper {
   static AppException fromDio(DioException error) {

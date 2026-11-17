@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_envelope.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/storage/secure_storage_service.dart';
+import '../../messages/domain/models/chat_message.dart';
+import '../../messages/domain/models/chat_thread.dart';
 import '../domain/models/inspector_session.dart';
 
 final inspectorAuthRemoteProvider = Provider<InspectorAuthRemote>((Ref ref) {
@@ -190,6 +192,46 @@ final class InspectorAuthRemote {
         .whereType<Map>()
         .map((Map row) => row.map((key, value) => MapEntry('$key', value)))
         .toList();
+  }
+
+  Future<List<ChatThread>> inspectionThreads() async {
+    final Response<dynamic> response =
+        await _dio.get<dynamic>('/v1/inspection-chat/threads');
+    return ApiEnvelope.dataList(response.data)
+        .map(ChatThread.inspectionFromJson)
+        .toList();
+  }
+
+  Future<ChatThread> inspectionThreadForBooking(String bookingId) async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      '/v1/inspection-chat/by-booking/${Uri.encodeComponent(bookingId)}',
+    );
+    return ChatThread.inspectionFromJson(_data(response.data));
+  }
+
+  Future<List<ChatMessage>> inspectionMessages(String threadId) async {
+    final Response<dynamic> response = await _dio.get<dynamic>(
+      '/v1/inspection-chat/threads/${Uri.encodeComponent(threadId)}/messages',
+    );
+    return ApiEnvelope.dataList(response.data)
+        .map(ChatMessage.fromJson)
+        .toList();
+  }
+
+  Future<ChatMessage> sendInspectionMessage(String threadId, String text) async {
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      '/v1/inspection-chat/threads/${Uri.encodeComponent(threadId)}/messages',
+      data: <String, dynamic>{'text': text},
+    );
+    return ChatMessage.fromJson(_data(response.data));
+  }
+
+  Future<void> markInspectionRead(String threadId) async {
+    final Response<dynamic> response = await _dio.post<dynamic>(
+      '/v1/inspection-chat/threads/${Uri.encodeComponent(threadId)}/read',
+      data: <String, dynamic>{},
+    );
+    _data(response.data);
   }
 
   Future<void> logout() => _storage.clearInspectorSession();

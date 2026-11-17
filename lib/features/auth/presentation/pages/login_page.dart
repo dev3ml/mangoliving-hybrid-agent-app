@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_radius.dart';
 import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/env_config.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/mango_living_logo.dart';
@@ -182,33 +180,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               : const Text('Log in'),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        Text.rich(
-                          TextSpan(
-                            text: "Don't have an account? ",
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: <Widget>[
+                            Text(
+                              "Don't have an account? ",
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                            children: <InlineSpan>[
-                              WidgetSpan(
-                                alignment: PlaceholderAlignment.baseline,
-                                baseline: TextBaseline.alphabetic,
-                                child: GestureDetector(
-                                  onTap: () => launchUrl(
-                                    Uri.parse('${EnvConfig.agentWebUrl}/signup'),
-                                    mode: LaunchMode.externalApplication,
-                                  ),
-                                  child: Text(
-                                    'Sign up',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                            TextButton(
+                              onPressed: loading
+                                  ? null
+                                  : () => context.push(AppRoutes.signup),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                textStyle: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ],
-                          ),
-                          textAlign: TextAlign.center,
+                              child: const Text('Sign up'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

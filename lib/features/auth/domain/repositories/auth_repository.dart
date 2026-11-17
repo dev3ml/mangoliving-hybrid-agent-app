@@ -1,4 +1,5 @@
 import '../models/agent_user.dart';
+import '../signup_form.dart';
 
 abstract interface class AuthRepository {
   Future<AgentSession?> restoreSession();
@@ -7,6 +8,20 @@ abstract interface class AuthRepository {
     required String email,
     required String password,
   });
+
+  Future<SignupOutcome> signup({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String mobileNumber,
+    required bool smsConsent,
+    required String licenseNumber,
+  });
+
+  Future<AgentUser?> verifyEmail(String code);
+
+  Future<({bool alreadyVerified, int? cooldownSeconds})> resendVerification();
 
   Future<void> logout();
 

@@ -6,6 +6,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../domain/models/agent_user.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/signup_form.dart';
 import '../datasources/auth_remote_datasource.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((Ref ref) {
@@ -64,6 +65,44 @@ final class AuthRepositoryImpl implements AuthRepository {
     await _storage.saveAccessToken(session.token);
     await _persistUser(session.user);
     return session;
+  }
+
+  @override
+  Future<SignupOutcome> signup({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String mobileNumber,
+    required bool smsConsent,
+    required String licenseNumber,
+  }) async {
+    final AgentSession session = await _remote.signup(
+      email: email,
+      password: password,
+      firstName: firstName,
+      lastName: lastName,
+      mobileNumber: mobileNumber,
+      smsConsent: smsConsent,
+    );
+    await _storage.saveAccessToken(session.token);
+    await _persistUser(session.user);
+    String? licenseWarning;
+    try {
+      await _remote.saveLicenseNumber(licenseNumber);
+    } on Object catch (error) {
+      licenseWarning =
+          'Your account was created. Add your Real Estate Agent ID from Account. $error';
+    }
+    return SignupOutcome(session: session, licenseWarning: licenseWarning);
+  }
+
+  @override
+  Future<AgentUser?> verifyEmail(String code) => _remote.verifyEmail(code);
+
+  @override
+  Future<({bool alreadyVerified, int? cooldownSeconds})> resendVerification() {
+    return _remote.resendVerification();
   }
 
   @override

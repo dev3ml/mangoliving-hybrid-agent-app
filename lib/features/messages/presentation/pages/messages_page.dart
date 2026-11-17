@@ -187,30 +187,43 @@ class _ThreadTile extends StatelessWidget {
           ),
         ],
       ),
-      subtitle: Row(
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Expanded(
-            child: Text(
-              thread.preview,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (unread.isNotEmpty) ...<Widget>[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 10,
-              backgroundColor: AppColors.destructive,
-              child: Text(
-                unread,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
+          if (thread.isInspection)
+            Text(
+              'Inspection',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ],
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  thread.preview,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (unread.isNotEmpty) ...<Widget>[
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 10,
+                  backgroundColor: AppColors.destructive,
+                  child: Text(
+                    unread,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
       onTap: () => context.push(AppRoutes.messageThread(thread.agentClientId)),

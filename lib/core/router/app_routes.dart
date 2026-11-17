@@ -6,7 +6,13 @@ abstract final class AppRoutes {
   static const String inspectorLogin = '/inspector/login';
   static const String inspectorHome = '/inspector/home';
   static const String inspectorBooking = '/inspector/booking';
+  static const String inspectorChat = '/inspector/chat';
+
+  static String inspectorChatThread(String threadId) =>
+      '/inspector/chat/${Uri.encodeComponent(threadId)}';
   static const String login = '/login';
+  static const String signup = '/signup';
+  static const String verifyEmail = '/verify-email';
   static const String forgotPassword = '/forgot-password';
 
   static const String overview = '/overview';

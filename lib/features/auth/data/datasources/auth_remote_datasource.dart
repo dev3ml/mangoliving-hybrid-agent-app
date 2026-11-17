@@ -45,6 +45,86 @@ final class AuthRemoteDataSource {
     }
   }
 
+  Future<AgentSession> signup({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String mobileNumber,
+    required bool smsConsent,
+  }) async {
+    try {
+      final Response<dynamic> response = await _dio.post<dynamic>(
+        '/v1/auth/signup',
+        data: <String, dynamic>{
+          'email': email.trim(),
+          'password': password,
+          'firstName': firstName.trim(),
+          if (lastName.trim().isNotEmpty) 'lastName': lastName.trim(),
+          'mobileNumber': mobileNumber.trim(),
+          'smsConsent': smsConsent,
+          'userType': 'agent',
+        },
+      );
+      return _sessionFromResponse(response.data);
+    } on DioException catch (error) {
+      throw ExceptionMapper.fromDio(error);
+    }
+  }
+
+  /// The signup route does not store a license number. The account screen
+  /// already saves it with this profile update.
+  Future<void> saveLicenseNumber(String licenseNumber) async {
+    try {
+      final Response<dynamic> response = await _dio.patch<dynamic>(
+        '/v1/profile',
+        data: <String, dynamic>{'licenseNumber': licenseNumber.trim()},
+      );
+      final Map<String, dynamic> body = ApiEnvelope.requireMap(response.data);
+      ApiEnvelope.ensureSuccess(body);
+    } on DioException catch (error) {
+      throw ExceptionMapper.fromDio(error);
+    }
+  }
+
+  Future<AgentUser?> verifyEmail(String code) async {
+    try {
+      final Response<dynamic> response = await _dio.post<dynamic>(
+        '/v1/auth/verify-email',
+        data: <String, dynamic>{'code': code.trim()},
+      );
+      final Map<String, dynamic> body = ApiEnvelope.requireMap(response.data);
+      ApiEnvelope.ensureSuccess(body);
+      return _userFromData(ApiEnvelope.dataMap(body));
+    } on DioException catch (error) {
+      throw ExceptionMapper.fromDio(error);
+    }
+  }
+
+  Future<({bool alreadyVerified, int? cooldownSeconds})> resendVerification() async {
+    try {
+      final Response<dynamic> response = await _dio.post<dynamic>(
+        '/v1/auth/resend-verification',
+      );
+      final Map<String, dynamic> body = ApiEnvelope.requireMap(response.data);
+      ApiEnvelope.ensureSuccess(body);
+      final Map<String, dynamic>? data = ApiEnvelope.dataMap(body);
+      return (
+        alreadyVerified: data?['alreadyVerified'] == true,
+        cooldownSeconds: _asInt(data?['cooldownSeconds']),
+      );
+    } on DioException catch (error) {
+      final int? retryAfter = _retryAfterSeconds(error);
+      if (retryAfter != null) {
+        throw VerificationCooldownException(
+          retryAfter,
+          _messageFromDio(error) ?? 'Please wait before requesting a new code',
+        );
+      }
+      throw ExceptionMapper.fromDio(error);
+    }
+  }
+
   Future<void> forgotPassword(String email) async {
     try {
       final Response<dynamic> response = await _dio.post<dynamic>(
@@ -93,6 +173,32 @@ final class AuthRemoteDataSource {
       );
     }
     return AgentSession(token: token, user: user);
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse('$value');
+  }
+
+  int? _retryAfterSeconds(DioException error) {
+    if (error.response?.statusCode != 429) return null;
+    final dynamic data = error.response?.data;
+    if (data is! Map) return null;
+    final dynamic nested = data['data'];
+    if (nested is Map && nested['retryAfterSeconds'] != null) {
+      return _asInt(nested['retryAfterSeconds']);
+    }
+    return _asInt(data['retryAfterSeconds']);
+  }
+
+  String? _messageFromDio(DioException error) {
+    final dynamic data = error.response?.data;
+    if (data is Map && data['message'] is String) {
+      final String message = (data['message'] as String).trim();
+      if (message.isNotEmpty) return message;
+    }
+    return null;
   }
 
   AgentUser? _userFromData(Map<String, dynamic>? data) {

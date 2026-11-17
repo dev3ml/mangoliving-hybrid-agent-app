@@ -8,10 +8,13 @@ import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
+import '../../features/auth/presentation/pages/verify_email_page.dart';
 import '../../features/inspector/domain/models/inspector_session.dart';
 import '../../features/inspector/presentation/controllers/inspector_auth_controller.dart';
 import '../../features/inspector/presentation/pages/inspector_booking_page.dart';
+import '../../features/inspector/presentation/pages/inspector_chat_page.dart';
 import '../../features/inspector/presentation/pages/inspector_flow_page.dart';
 import '../../features/inspector/presentation/pages/inspector_inbox_page.dart';
 import '../../features/inspector/presentation/pages/inspector_login_page.dart';
@@ -53,12 +56,17 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
       final bool onInspectorLogin = loc == AppRoutes.inspectorLogin;
       final bool onInspectorHome = loc == AppRoutes.inspectorHome;
       final bool onInspectorBooking = loc == AppRoutes.inspectorBooking;
+      final bool onInspectorChat = loc.startsWith('${AppRoutes.inspectorChat}/');
       final bool onInspector = onInspectorOnboard ||
           onInspectorLogin ||
           onInspectorHome ||
           loc.startsWith('${AppRoutes.inspector}/');
       final bool onLogin = loc == AppRoutes.login;
+      final bool onSignup = loc == AppRoutes.signup;
+      final bool onVerify = loc == AppRoutes.verifyEmail;
       final bool onForgot = loc == AppRoutes.forgotPassword;
+      final bool pendingVerify = ref.read(pendingEmailVerificationProvider);
+      final bool authScreen = onLogin || onForgot || onSignup || onVerify;
 
       if (role == AppRole.inspector) {
         if (inspectorAuth.isLoading) {
@@ -67,7 +75,10 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
         }
         final bool inspectorSignedIn = inspectorAuth.valueOrNull != null;
         if (inspectorSignedIn) {
-          if (onInspectorHome || onInspectorOnboard || onInspectorBooking) {
+          if (onInspectorHome ||
+              onInspectorOnboard ||
+              onInspectorBooking ||
+              onInspectorChat) {
             return null;
           }
           return AppRoutes.inspectorHome;
@@ -77,16 +88,19 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
       }
 
       if (loading) {
-        if (role == AppRole.agent && (onLogin || onForgot)) return null;
+        if (role == AppRole.agent && authScreen) return null;
         return onSplash ? null : AppRoutes.splash;
       }
       if (role == AppRole.none) {
         return onRole ? null : AppRoutes.role;
       }
       if (!signedIn) {
-        return (onLogin || onForgot) ? null : AppRoutes.login;
+        return (onLogin || onForgot || onSignup) ? null : AppRoutes.login;
       }
-      if (onSplash || onLogin || onForgot || onRole || onInspector) {
+      if (pendingVerify) {
+        return onVerify ? null : AppRoutes.verifyEmail;
+      }
+      if (onSplash || onLogin || onForgot || onSignup || onVerify || onRole || onInspector) {
         return AppRoutes.overview;
       }
       return null;
@@ -125,6 +139,19 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
         },
       ),
       GoRoute(
+        path: '${AppRoutes.inspectorChat}/:threadId',
+        builder: (BuildContext context, GoRouterState state) {
+          final String id = Uri.decodeComponent(
+            state.pathParameters['threadId'] ?? '',
+          );
+          final Object? extra = state.extra;
+          return InspectorChatPage(
+            threadId: id,
+            title: extra is String ? extra : 'Inspection',
+          );
+        },
+      ),
+      GoRoute(
         path: AppRoutes.inspector,
         builder: (BuildContext context, GoRouterState state) {
           return const InspectorFlowPage();
@@ -134,6 +161,18 @@ final goRouterProvider = Provider<GoRouter>((Ref ref) {
         path: AppRoutes.login,
         builder: (BuildContext context, GoRouterState state) {
           return const LoginPage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.signup,
+        builder: (BuildContext context, GoRouterState state) {
+          return const SignupPage();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmail,
+        builder: (BuildContext context, GoRouterState state) {
+          return const VerifyEmailPage();
         },
       ),
       GoRoute(
@@ -287,6 +326,10 @@ final class RouterRefresh extends ChangeNotifier {
   RouterRefresh(Ref ref) {
     _authSub = ref.listen(authControllerProvider, (_, _) => notifyListeners());
     _roleSub = ref.listen(appRoleProvider, (_, _) => notifyListeners());
+    _verifySub = ref.listen(
+      pendingEmailVerificationProvider,
+      (_, _) => notifyListeners(),
+    );
     _inspectorSub = ref.listen(
       inspectorAuthControllerProvider,
       (_, _) => notifyListeners(),
@@ -295,12 +338,14 @@ final class RouterRefresh extends ChangeNotifier {
 
   late final ProviderSubscription<AsyncValue<dynamic>> _authSub;
   late final ProviderSubscription<AppRole> _roleSub;
+  late final ProviderSubscription<bool> _verifySub;
   late final ProviderSubscription<AsyncValue<InspectorSession?>> _inspectorSub;
 
   @override
   void dispose() {
     _authSub.close();
     _roleSub.close();
+    _verifySub.close();
     _inspectorSub.close();
     super.dispose();
   }
